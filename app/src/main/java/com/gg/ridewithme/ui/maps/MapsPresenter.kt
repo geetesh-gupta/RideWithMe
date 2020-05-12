@@ -1,5 +1,6 @@
 package com.gg.ridewithme.ui.maps
 
+import android.util.Log
 import com.gg.ridewithme.data.network.NetworkService
 import com.gg.ridewithme.utils.Constants
 import com.google.android.gms.maps.model.LatLng
@@ -9,6 +10,9 @@ import org.json.JSONObject
 
 
 class MapsPresenter(private val networkService: NetworkService) : WebSocketListener {
+    companion object {
+        private const val TAG = "MapsPresenter"
+    }
 
     private var view: MapsView? = null
     private lateinit var webSocket: WebSocket
@@ -55,7 +59,7 @@ class MapsPresenter(private val networkService: NetworkService) : WebSocketListe
     }
 
     override fun onConnect() {
-
+        Log.d(TAG, "onConnect")
     }
 
     override fun onMessage(data: String) {
@@ -78,12 +82,44 @@ class MapsPresenter(private val networkService: NetworkService) : WebSocketListe
                 }
                 view?.showPath(pickUpPath)
             }
+            Constants.LOCATION -> {
+                val latCurrent = jsonObject.getDouble("lat")
+                val lngCurrent = jsonObject.getDouble("lng")
+                view?.updateCabLocation(LatLng(latCurrent, lngCurrent))
+            }
+            Constants.CAB_IS_ARRIVING -> {
+                view?.informCabIsArriving()
+            }
+            Constants.CAB_ARRIVED -> {
+                view?.informCabArrived()
+            }
+            Constants.TRIP_START -> {
+                view?.informTripStart()
+            }
+            Constants.TRIP_END -> {
+                view?.informTripEnd()
+            }
         }
     }
 
     override fun onDisconnect() {
+        Log.d(TAG, "onDisconnect")
     }
 
     override fun onError(error: String) {
+        Log.d(TAG, "onError : $error")
+        val jsonObject = JSONObject(error)
+        when (jsonObject.getString(Constants.TYPE)) {
+            Constants.ROUTES_NOT_AVAILABLE -> {
+                view?.showRoutesNotAvailableError()
+            }
+            Constants.DIRECTION_API_FAILED -> {
+                view?.showDirectionApiFailedError(
+                    "Direction API Failed : " + jsonObject.getString(
+                        Constants.ERROR
+                    )
+                )
+            }
+        }
     }
 }

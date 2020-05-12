@@ -8,4 +8,18 @@ interface MapsView {
     fun informCabBooked()
 
     fun showPath(pickUpPath: List<LatLng>)
+
+    fun updateCabLocation(latLng: LatLng)
+
+    fun informCabIsArriving()
+
+    fun informCabArrived()
+
+    fun informTripStart()
+
+    fun informTripEnd()
+
+    fun showRoutesNotAvailableError()
+
+    fun showDirectionApiFailedError(error: String)
 }
