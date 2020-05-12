@@ -1,15 +1,20 @@
 package com.gg.ridewithme.ui.maps
 
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
+import android.view.View
 import android.widget.Toast
 import com.gg.ridewithme.R
 import com.gg.ridewithme.data.network.NetworkService
 import com.gg.ridewithme.utils.MapUtils
 import com.gg.ridewithme.utils.PermissionUtils
 import com.gg.ridewithme.utils.ViewUtils
+import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -19,6 +24,11 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.AutocompleteActivity
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import kotlinx.android.synthetic.main.activity_maps.*
 
 
 class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
@@ -38,6 +48,9 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
     private var currentLatLng: LatLng? = null
     private val nearbyCabMarkerList = arrayListOf<Marker>()
 
+    private var pickUpLatLng: LatLng? = null
+    private var dropLatLng: LatLng? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
@@ -47,6 +60,24 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
         mapFragment.getMapAsync(this)
         presenter = MapsPresenter(NetworkService())
         presenter.onAttach(this)
+        setUpClickListener()
+    }
+
+    private fun setUpClickListener() {
+        pickUpTextView.setOnClickListener {
+            launchLocationAutoCompleteActivity(PICKUP_REQUEST_CODE)
+        }
+        dropTextView.setOnClickListener {
+            launchLocationAutoCompleteActivity(DROP_REQUEST_CODE)
+        }
+    }
+
+    private fun launchLocationAutoCompleteActivity(requestCode: Int) {
+        val fields: List<Place.Field> =
+            listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG)
+        val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
+            .build(this)
+        startActivityForResult(intent, requestCode)
     }
 
     private fun moveCamera(latLng: LatLng?) {
@@ -63,6 +94,11 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
         return googleMap.addMarker(
             MarkerOptions().position(latLng).flat(true).icon(bitmapDescriptor)
         )
+    }
+
+    private fun setCurrentLocationAsPickUp() {
+        pickUpLatLng = currentLatLng
+        pickUpTextView.text = getString(R.string.current_location)
     }
 
     private fun enableMyLocationOnMap() {
@@ -82,6 +118,7 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
                     for (location in locationResult.locations) {
                         if (currentLatLng == null) {
                             currentLatLng = LatLng(location.latitude, location.longitude)
+                            setCurrentLocationAsPickUp()
                             enableMyLocationOnMap()
                             moveCamera(currentLatLng)
                             animateCamera(currentLatLng)
@@ -150,6 +187,37 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
                         getString(R.string.location_permission_not_granted),
                         Toast.LENGTH_LONG
                     ).show()
+                }
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICKUP_REQUEST_CODE || requestCode == DROP_REQUEST_CODE) {
+            when (resultCode) {
+                Activity.RESULT_OK -> {
+                    val place = Autocomplete.getPlaceFromIntent(data!!)
+                    Log.d(TAG, "Place: " + place.name + ", " + place.id + ", " + place.latLng)
+                    when (requestCode) {
+                        PICKUP_REQUEST_CODE -> {
+                            pickUpTextView.text = place.name
+                            pickUpLatLng = place.latLng
+//                            checkAndShowRequestButton()
+                        }
+                        DROP_REQUEST_CODE -> {
+                            dropTextView.text = place.name
+                            dropLatLng = place.latLng
+//                            checkAndShowRequestButton()
+                        }
+                    }
+                }
+                AutocompleteActivity.RESULT_ERROR -> {
+                    val status: Status = Autocomplete.getStatusFromIntent(data!!)
+                    Log.d(TAG, status.statusMessage!!)
+                }
+                Activity.RESULT_CANCELED -> {
+                    Log.d(TAG, "Place Selection Canceled")
                 }
             }
         }
