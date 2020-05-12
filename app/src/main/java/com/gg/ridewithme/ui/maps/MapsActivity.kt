@@ -3,6 +3,7 @@ package com.gg.ridewithme.ui.maps
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
@@ -11,6 +12,7 @@ import android.view.View
 import android.widget.Toast
 import com.gg.ridewithme.R
 import com.gg.ridewithme.data.network.NetworkService
+import com.gg.ridewithme.utils.AnimationUtils
 import com.gg.ridewithme.utils.MapUtils
 import com.gg.ridewithme.utils.PermissionUtils
 import com.gg.ridewithme.utils.ViewUtils
@@ -50,6 +52,13 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
 
     private var pickUpLatLng: LatLng? = null
     private var dropLatLng: LatLng? = null
+
+
+    private var greyPolyLine: Polyline? = null
+    private var blackPolyline: Polyline? = null
+
+    private var originMarker: Marker? = null
+    private var destinationMarker: Marker? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,6 +108,13 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
 
     private fun addCarMarkerAndGet(latLng: LatLng): Marker {
         val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(MapUtils.getCarBitmap(this))
+        return googleMap.addMarker(
+            MarkerOptions().position(latLng).flat(true).icon(bitmapDescriptor)
+        )
+    }
+
+    private fun addOriginDestinationMarkerAndGet(latLng: LatLng): Marker {
+        val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(MapUtils.getDestinationBitmap())
         return googleMap.addMarker(
             MarkerOptions().position(latLng).flat(true).icon(bitmapDescriptor)
         )
@@ -258,4 +274,36 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
         statusTextView.text = getString(R.string.your_cab_is_booked)
     }
 
+    override fun showPath(latLngList: List<LatLng>) {
+        val builder = LatLngBounds.Builder()
+        for (latLng in latLngList) {
+            builder.include(latLng)
+        }
+        val bounds = builder.build()
+        googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 2))
+
+        val polylineOptions = PolylineOptions()
+        polylineOptions.color(Color.GRAY)
+        polylineOptions.width(5f)
+        polylineOptions.addAll(latLngList)
+        greyPolyLine = googleMap.addPolyline(polylineOptions)
+
+        val blackPolylineOptions = PolylineOptions()
+        blackPolylineOptions.width(5f)
+        blackPolylineOptions.color(Color.BLACK)
+        blackPolyline = googleMap.addPolyline(blackPolylineOptions)
+
+        originMarker = addOriginDestinationMarkerAndGet(latLngList[0])
+        originMarker?.setAnchor(0.5f, 0.5f)
+        destinationMarker = addOriginDestinationMarkerAndGet(latLngList[latLngList.size - 1])
+        destinationMarker?.setAnchor(0.5f, 0.5f)
+
+        val polylineAnimator = AnimationUtils.polyLineAnimator()
+        polylineAnimator.addUpdateListener { valueAnimator ->
+            val percentValue = (valueAnimator.animatedValue as Int)
+            val index = (greyPolyLine?.points!!.size * (percentValue / 100.0f)).toInt()
+            blackPolyline?.points = greyPolyLine?.points!!.subList(0, index)
+        }
+        polylineAnimator.start()
+    }
 }
