@@ -32,6 +32,16 @@ class MapsPresenter(private val networkService: NetworkService) : WebSocketListe
         webSocket.sendMessage(jsonObject.toString())
     }
 
+    fun requestCab(pickUpLatLng: LatLng, dropLatLng: LatLng) {
+        val jsonObject = JSONObject()
+        jsonObject.put("type", Constants.REQUEST_CAB)
+        jsonObject.put("pickUpLat", pickUpLatLng.latitude)
+        jsonObject.put("pickUpLng", pickUpLatLng.longitude)
+        jsonObject.put("dropLat", dropLatLng.latitude)
+        jsonObject.put("dropLng", dropLatLng.longitude)
+        webSocket.sendMessage(jsonObject.toString())
+    }
+
     private fun handleOnMessageNearbyCabs(jsonObject: JSONObject) {
         val nearbyCabLocations = arrayListOf<LatLng>()
         val jsonArray = jsonObject.getJSONArray(Constants.LOCATIONS)
@@ -53,6 +63,9 @@ class MapsPresenter(private val networkService: NetworkService) : WebSocketListe
         when (jsonObject.getString(Constants.TYPE)) {
             Constants.NEAR_BY_CABS -> {
                 handleOnMessageNearbyCabs(jsonObject)
+            }
+            Constants.CAB_BOOKED -> {
+                view?.informCabBooked()
             }
         }
     }

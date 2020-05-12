@@ -6,4 +6,7 @@ object Constants {
     const val LOCATIONS = "locations"
     const val LAT = "lat"
     const val LNG = "lng"
+    const val CAB_BOOKED = "cabBooked"
+    const val REQUEST_CAB = "requestCab"
+
 }

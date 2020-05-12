@@ -70,6 +70,14 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
         dropTextView.setOnClickListener {
             launchLocationAutoCompleteActivity(DROP_REQUEST_CODE)
         }
+        requestCabButton.setOnClickListener {
+            statusTextView.visibility = View.VISIBLE
+            statusTextView.text = getString(R.string.requesting_your_cab)
+            requestCabButton.isEnabled = false
+            pickUpTextView.isEnabled = false
+            dropTextView.isEnabled = false
+            presenter.requestCab(pickUpLatLng!!, dropLatLng!!)
+        }
     }
 
     private fun launchLocationAutoCompleteActivity(requestCode: Int) {
@@ -138,6 +146,13 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
         )
     }
 
+    private fun checkAndShowRequestButton() {
+        if (pickUpLatLng !== null && dropLatLng !== null) {
+            requestCabButton.visibility = View.VISIBLE
+            requestCabButton.isEnabled = true
+        }
+    }
+
     override fun onMapReady(googleMap: GoogleMap) {
         this.googleMap = googleMap
     }
@@ -203,12 +218,12 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
                         PICKUP_REQUEST_CODE -> {
                             pickUpTextView.text = place.name
                             pickUpLatLng = place.latLng
-//                            checkAndShowRequestButton()
+                            checkAndShowRequestButton()
                         }
                         DROP_REQUEST_CODE -> {
                             dropTextView.text = place.name
                             dropLatLng = place.latLng
-//                            checkAndShowRequestButton()
+                            checkAndShowRequestButton()
                         }
                     }
                 }
@@ -235,4 +250,12 @@ class MapsActivity : AppCompatActivity(), MapsView, OnMapReadyCallback {
             nearbyCabMarkerList.add(nearbyCabMarker)
         }
     }
+
+    override fun informCabBooked() {
+        nearbyCabMarkerList.forEach { it.remove() }
+        nearbyCabMarkerList.clear()
+        requestCabButton.visibility = View.GONE
+        statusTextView.text = getString(R.string.your_cab_is_booked)
+    }
+
 }
